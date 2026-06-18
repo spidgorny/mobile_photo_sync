@@ -21,11 +21,9 @@ class PhotoScannerService {
     );
 
     final paths = await PhotoManager.getAssetPathList(type: RequestType.image, filterOption: filter);
-    final cameraPaths = paths.where((path) => path.name.toLowerCase().contains('camera')).toList();
-    final searchPaths = cameraPaths.isNotEmpty ? cameraPaths : paths;
 
     final result = <PhotoUpload>[];
-    for (final path in searchPaths) {
+    for (final path in paths) {
       final count = await path.assetCountAsync;
       var page = 0;
       const pageSize = 200;
@@ -34,7 +32,6 @@ class PhotoScannerService {
         for (final asset in assets) {
           final file = await asset.originFile;
           if (file == null) continue;
-          if (!_isCameraFile(file)) continue;
           final stat = await file.stat();
           final filename = p.basename(file.path);
           final mimeType = lookupMimeType(file.path) ?? 'image/jpeg';
@@ -57,10 +54,5 @@ class PhotoScannerService {
     }
     final photos = unique.values.toList()..sort((a, b) => a.takenAt.compareTo(b.takenAt));
     return photos;
-  }
-
-  bool _isCameraFile(File file) {
-    final normalized = file.path.replaceAll('\\', '/').toLowerCase();
-    return normalized.contains('/dcim/camera/') || normalized.contains('/dcim/100') || normalized.contains('/camera/');
   }
 }
