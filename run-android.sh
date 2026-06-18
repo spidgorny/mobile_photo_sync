@@ -39,4 +39,4 @@ fi
 
 # Run Flutter app
 echo "Running Flutter app on Android..."
-flutter run android
+flutter run
