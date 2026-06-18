@@ -33,8 +33,10 @@ class _HomeScreenState extends State<HomeScreen> {
   int _completed = 0;
   int _total = 0;
   double? _fileProgress;
+  bool _showNewFolderForm = false;
 
   final _newFolderController = TextEditingController();
+  final _newFolderFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -113,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _selectedFolder = name;
         _status = 'Created folder $name';
+        _showNewFolderForm = false;
       });
     });
   }
@@ -222,18 +225,34 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _newFolderController,
-                  decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'New folder name'),
+          if (!_showNewFolderForm)
+            FilledButton.icon(
+              onPressed: _busy || !signedIn ? null : () {
+                setState(() => _showNewFolderForm = true);
+                Future.delayed(const Duration(milliseconds: 100), () => _newFolderFocusNode.requestFocus());
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Create Folder'),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newFolderController,
+                    focusNode: _newFolderFocusNode,
+                    decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'New folder name'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(onPressed: _busy || !signedIn ? null : _createFolder, child: const Text('Create')),
-            ],
-          ),
+                const SizedBox(width: 8),
+                FilledButton(onPressed: _busy || !signedIn ? null : _createFolder, child: const Text('Create')),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: _busy ? null : () => setState(() => _showNewFolderForm = false),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            ),
           const SizedBox(height: 16),
           Text('Date range', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
