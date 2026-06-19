@@ -42,4 +42,23 @@ class SettingsService {
   Future<void> setGoogleAndroidClientId(String value) async {
     await _storage.write(key: _googleAndroidClientIdKey, value: value.trim());
   }
+
+  // Only return stored values, no environment defaults (for production mode)
+  Future<String?> get apiBaseUrlStored async {
+    final stored = await _storage.read(key: _apiBaseUrlKey);
+    if (stored != null && stored.trim().isNotEmpty) return stored.trim();
+    return null;
+  }
+
+  Future<String?> get googleWebClientIdStored async {
+    final stored = await _storage.read(key: _googleWebClientIdKey);
+    if (stored != null && stored.trim().isNotEmpty) return stored.trim();
+    return null;
+  }
+
+  Future<String?> get googleAndroidClientIdStored async {
+    final stored = await _storage.read(key: _googleAndroidClientIdKey);
+    if (stored != null && stored.trim().isNotEmpty) return stored.trim();
+    return null;
+  }
 }

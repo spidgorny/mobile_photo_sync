@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../services/settings_service.dart';
@@ -23,18 +24,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _load() async {
-    _apiController.text = await widget.settings.apiBaseUrl ?? '';
-    _webClientIdController.text = await widget.settings.googleWebClientId ?? '';
-    _androidClientIdController.text = await widget.settings.googleAndroidClientId ?? '';
+    // In debug mode, prefill from environment variables
+    // In production mode, only load stored values (force manual entry)
+    if (kDebugMode) {
+      _apiController.text = await widget.settings.apiBaseUrl ?? '';
+      _webClientIdController.text = await widget.settings.googleWebClientId ?? '';
+      _androidClientIdController.text =
+          await widget.settings.googleAndroidClientId ?? '';
+    } else {
+      // In production, only load stored values (no defaults from env)
+      _apiController.text = await widget.settings.apiBaseUrlStored ?? '';
+      _webClientIdController.text = await widget.settings.googleWebClientIdStored ?? '';
+      _androidClientIdController.text =
+          await widget.settings.googleAndroidClientIdStored ?? '';
+    }
     setState(() => _loading = false);
   }
 
   Future<void> _save() async {
     await widget.settings.setApiBaseUrl(_apiController.text);
     await widget.settings.setGoogleWebClientId(_webClientIdController.text);
-    await widget.settings.setGoogleAndroidClientId(_androidClientIdController.text);
+    await widget.settings
+        .setGoogleAndroidClientId(_androidClientIdController.text);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings saved')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Settings saved')));
       Navigator.pop(context);
     }
   }
@@ -61,8 +75,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 TextField(
                   controller: _webClientIdController,
                   decoration: const InputDecoration(
-                    labelText: 'Google Web Client ID (optional)',
-                    helperText: 'Needed if the backend later verifies Google idToken.',
+                    labelText: 'Google Web Client ID (Required)',
+                    helperText:
+                        'Found in Google Cloud Console as "Web client". This MUST be used as the serverClientId to get an idToken for the backend.',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -70,8 +85,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 TextField(
                   controller: _androidClientIdController,
                   decoration: const InputDecoration(
-                    labelText: 'Google Android Client ID (required for physical devices)',
-                    helperText: 'Required for Google Sign-In on Android devices. Add both debug and release SHA-1 fingerprints to this client ID in Google Cloud Console.',
+                    labelText: 'Google Android Client ID (Informational)',
+                    helperText:
+                        'Created in Google Console with SHA-1 and package name (com.androidfromfrankfurt.photo_sync). Android handles this automatically; you don\'t strictly need to paste the ID here.',
                     border: OutlineInputBorder(),
                   ),
                 ),

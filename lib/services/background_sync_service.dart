@@ -1,11 +1,7 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:photo_manager/photo_manager.dart';
 import 'package:workmanager/workmanager.dart';
 
-import '../models/photo_upload.dart';
 import 'api_service.dart';
 import 'auth_service.dart';
 import 'photo_scanner_service.dart';
@@ -15,7 +11,8 @@ import 'sync_settings_service.dart';
 import 'upload_history_service.dart';
 
 class BackgroundSyncService {
-  BackgroundSyncService(this._settings, this._auth, this._api, this._scanner, this._history);
+  BackgroundSyncService(
+      this._settings, this._auth, this._api, this._scanner, this._history);
 
   final SettingsService _settings;
   final AuthService _auth;
@@ -25,14 +22,24 @@ class BackgroundSyncService {
 
   static const _notificationChannelId = 'photo_sync_channel';
   static const _notificationChannelName = 'Photo Sync';
-  static const _notificationChannelDescription = 'Background photo synchronization notifications';
+  static const _notificationChannelDescription =
+      'Background photo synchronization notifications';
+  static const _syncNotificationId = 1001;
 
-  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _notifications =
+      FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
-    const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+    const initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
     await _notifications.initialize(initializationSettings);
+
+    final androidImplementation =
+        _notifications.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    await androidImplementation?.requestNotificationsPermission();
 
     const androidChannel = AndroidNotificationChannel(
       _notificationChannelId,
@@ -40,7 +47,10 @@ class BackgroundSyncService {
       description: _notificationChannelDescription,
       importance: Importance.high,
     );
-    await _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(androidChannel);
+    await _notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(androidChannel);
   }
 
   Future<void> enableBackgroundSync() async {
@@ -73,17 +83,30 @@ class BackgroundSyncService {
     );
   }
 
-  Future<void> performSync() async {
+  Future<void> performSync({bool isTest = false}) async {
     try {
       final settingsService = SyncSettingsService();
       final settings = await settingsService.getSettings();
 
-      if (!settings.enabled || settings.folder.isEmpty) {
-        debugPrint('Background sync: Not enabled or no folder selected');
+      if (settings.folder.isEmpty) {
+        debugPrint('Background sync: No folder selected');
+        if (isTest) {
+          await _showNotification(
+              'Photo Sync', 'Sync failed: No folder selected in settings');
+        }
         return;
       }
 
-      await _showNotification('Photo Sync', 'Starting synchronization...');
+      if (!settings.enabled && !isTest) {
+        debugPrint('Background sync: Not enabled');
+        return;
+      }
+
+      await _showNotification(
+          'Photo Sync',
+          isTest
+              ? 'Starting test synchronization...'
+              : 'Starting synchronization...');
 
       final sync = SyncService(_api, _scanner, _history);
       final photos = await sync.preview(settings.startDate, settings.endDate);
@@ -137,7 +160,8 @@ class BackgroundSyncService {
     }
   }
 
-  Future<void> _showNotification(String title, String body, {int? progress}) async {
+  Future<void> _showNotification(String title, String body,
+      {int? progress}) async {
     final androidDetails = AndroidNotificationDetails(
       _notificationChannelId,
       _notificationChannelName,
@@ -147,12 +171,13 @@ class BackgroundSyncService {
       showProgress: progress != null,
       maxProgress: 100,
       progress: progress ?? 0,
+      onlyAlertOnce: true,
     );
 
     final notificationDetails = NotificationDetails(android: androidDetails);
 
     await _notifications.show(
-      DateTime.now().millisecondsSinceEpoch % 100000,
+      _syncNotificationId,
       title,
       body,
       notificationDetails,
@@ -170,7 +195,8 @@ void callbackDispatcher() {
       final scanner = PhotoScannerService();
       final history = UploadHistoryService();
 
-      final syncService = BackgroundSyncService(settings, auth, api, scanner, history);
+      final syncService =
+          BackgroundSyncService(settings, auth, api, scanner, history);
       await syncService.initialize();
       await syncService.performSync();
 

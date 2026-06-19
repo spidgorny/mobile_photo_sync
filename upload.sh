@@ -4,7 +4,7 @@
 set -e
 
 # --- CONFIGURATION ---
-PHONE_IP="192.168.8.150"
+PHONE_IP="192.168.8.113"
 PHONE_PORT="2222"
 PHONE_USER="ssh"  # Change to your Termux/SSH username (e.g., 'root' or 'change_me')
 #REMOTE_DEST="/storage/emulated/0/Download/"       # Destination directory on the Android device

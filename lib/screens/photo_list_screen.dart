@@ -54,7 +54,8 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     _api = ApiService(_settings, _auth);
     _history = UploadHistoryService();
     _sync = SyncService(_api, PhotoScannerService(), _history);
-    _backgroundSync = BackgroundSyncService(_settings, _auth, _api, PhotoScannerService(), _history);
+    _backgroundSync = BackgroundSyncService(
+        _settings, _auth, _api, PhotoScannerService(), _history);
     _syncSettings = SyncSettingsService();
     _loadDateRange();
     _loadSyncSettings();
@@ -83,7 +84,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     setState(() => _busy = true);
     try {
       final photos = await _sync.preview(_startDate, _endDate);
-      
+
       final uploadedKeys = <String>{};
       for (final photo in photos) {
         final key = photo.uploadKey(widget.folder);
@@ -144,7 +145,8 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
         setState(() => _autoSyncEnabled = true);
         await _saveSyncSettings();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Auto-sync enabled. Photos will sync hourly.')),
+          const SnackBar(
+              content: Text('Auto-sync enabled. Photos will sync hourly.')),
         );
       } else {
         await _backgroundSync.disableBackgroundSync();
@@ -169,7 +171,8 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _status = 'Error: $e');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -224,7 +227,8 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
   String _date(DateTime date) => DateFormat.yMMMd().format(date);
 
   void _changeFolder() {
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const FolderScreen()));
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (_) => const FolderScreen()));
   }
 
   Future<void> _testBackgroundSync() async {
@@ -232,7 +236,9 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
       await _backgroundSync.initialize();
       await _backgroundSync.performSync();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Background sync test completed. Check notification for details.')),
+        const SnackBar(
+            content: Text(
+                'Background sync test completed. Check notification for details.')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -255,7 +261,8 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
           PopupMenuButton<String>(
             onSelected: (value) async {
               if (value == 'clear_history') {
-                await _runBusy(() => _history.clear().then((_) => setState(() => _status = 'Local upload history cleared.')));
+                await _runBusy(() => _history.clear().then((_) =>
+                    setState(() => _status = 'Local upload history cleared.')));
               } else if (value == 'test_sync') {
                 await _testBackgroundSync();
               }
@@ -289,91 +296,99 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
       body: RefreshIndicator(
         onRefresh: _loadPhotos,
         child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text('Date range', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(onPressed: _busy ? null : _pickStartDate, icon: const Icon(Icons.calendar_today), label: Text('From ${_date(_startDate)}')),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(onPressed: _busy ? null : _pickEndDate, icon: const Icon(Icons.event), label: Text('To ${_date(_endDate)}')),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SwitchListTile(
-            title: const Text('Auto-sync'),
-            subtitle: const Text('Sync photos hourly in background'),
-            value: _autoSyncEnabled,
-            onChanged: _busy ? null : _toggleAutoSync,
-            contentPadding: EdgeInsets.zero,
-          ),
-          const SizedBox(height: 8),
-          if (_busy) const LinearProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(_status),
-          const SizedBox(height: 16),
-          if (_photos.isNotEmpty)
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 5,
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
-              ),
-              itemCount: _photos.length,
-              itemBuilder: (context, index) {
-                final photo = _photos[index];
-                final isUploaded = _uploadedKeys.contains(photo.uploadKey(widget.folder));
-                return FutureBuilder<Uint8List?>(
-                  future: photo.assetId.isNotEmpty
-                      ? AssetEntity.fromId(photo.assetId).then((asset) => asset?.thumbnailData)
-                      : null,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasData && snapshot.data != null) {
-                      return Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.memory(
-                            snapshot.data!,
-                            fit: BoxFit.cover,
-                          ),
-                          if (isUploaded)
-                            const Positioned(
-                              top: 4,
-                              right: 4,
-                              child: Icon(
-                                Icons.cloud_done,
-                                color: Colors.white,
-                                size: 20,
-                                shadows: [
-                                  Shadow(
-                                    blurRadius: 2,
-                                    color: Colors.black,
-                                    offset: Offset(0, 0),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      );
-                    }
-                    return const Icon(Icons.image);
-                  },
-                );
-              },
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('Date range', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                      onPressed: _busy ? null : _pickStartDate,
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text('From ${_date(_startDate)}')),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                      onPressed: _busy ? null : _pickEndDate,
+                      icon: const Icon(Icons.event),
+                      label: Text('To ${_date(_endDate)}')),
+                ),
+              ],
             ),
-          const SizedBox(height: 24),
-        ],
-      ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Auto-sync'),
+              subtitle: const Text('Sync photos hourly in background'),
+              value: _autoSyncEnabled,
+              onChanged: _busy ? null : _toggleAutoSync,
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 8),
+            if (_busy) const LinearProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(_status),
+            const SizedBox(height: 16),
+            if (_photos.isNotEmpty)
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 5,
+                  crossAxisSpacing: 4,
+                  mainAxisSpacing: 4,
+                ),
+                itemCount: _photos.length,
+                itemBuilder: (context, index) {
+                  final photo = _photos[index];
+                  final isUploaded =
+                      _uploadedKeys.contains(photo.uploadKey(widget.folder));
+                  return FutureBuilder<Uint8List?>(
+                    future: photo.assetId.isNotEmpty
+                        ? AssetEntity.fromId(photo.assetId)
+                            .then((asset) => asset?.thumbnailData)
+                        : null,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasData && snapshot.data != null) {
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.memory(
+                              snapshot.data!,
+                              fit: BoxFit.cover,
+                            ),
+                            if (isUploaded)
+                              const Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Icon(
+                                  Icons.cloud_done,
+                                  color: Colors.white,
+                                  size: 20,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 2,
+                                      color: Colors.black,
+                                      offset: Offset(0, 0),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        );
+                      }
+                      return const Icon(Icons.image);
+                    },
+                  );
+                },
+              ),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }

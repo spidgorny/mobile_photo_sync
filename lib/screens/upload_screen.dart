@@ -51,7 +51,8 @@ class _UploadScreenState extends State<UploadScreen> {
         },
       );
       setState(() {
-        _status = 'Done. Scanned ${summary.scanned}, uploaded ${summary.uploaded}, skipped ${summary.skipped}.';
+        _status =
+            'Done. Scanned ${summary.scanned}, uploaded ${summary.uploaded}, skipped ${summary.skipped}.';
         _fileProgress = null;
         _isComplete = true;
       });
@@ -73,51 +74,70 @@ class _UploadScreenState extends State<UploadScreen> {
         title: const Text('Upload Progress'),
         automaticallyImplyLeading: !_isComplete,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _hasError ? Icons.error : (_isComplete ? Icons.check_circle : Icons.cloud_upload),
-              size: 80,
-              color: _hasError ? Colors.red : (_isComplete ? Colors.green : Colors.blue),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(
+                  _hasError
+                      ? Icons.error
+                      : (_isComplete ? Icons.check_circle : Icons.cloud_upload),
+                  size: 80,
+                  color: _hasError
+                      ? Colors.red
+                      : (_isComplete ? Colors.green : Colors.blue),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  _hasError
+                      ? 'Upload Failed'
+                      : (_isComplete ? 'Upload Complete' : 'Uploading...'),
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                if (!_isComplete) ...[
+                  const LinearProgressIndicator(),
+                  const SizedBox(height: 8),
+                ],
+                if (progress != null && !_isComplete) ...[
+                  LinearProgressIndicator(value: progress.clamp(0, 1)),
+                  const SizedBox(height: 8),
+                  Text('Overall: $_completed / $_total',
+                      textAlign: TextAlign.center),
+                ],
+                if (_fileProgress != null && !_isComplete) ...[
+                  LinearProgressIndicator(value: _fileProgress!.clamp(0, 1)),
+                  const SizedBox(height: 8),
+                  Text(
+                      'Current file: ${(_fileProgress! * 100).toStringAsFixed(0)}%',
+                      textAlign: TextAlign.center),
+                ],
+                const SizedBox(height: 16),
+                Text(
+                  _status,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                if (_isComplete)
+                  SizedBox(
+                    width: 200,
+                    height: 54,
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.check, size: 28),
+                      label: const Text('OK', style: TextStyle(fontSize: 20)),
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(height: 24),
-            Text(
-              _hasError ? 'Upload Failed' : (_isComplete ? 'Upload Complete' : 'Uploading...'),
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            if (!_isComplete) ...[
-              const LinearProgressIndicator(),
-              const SizedBox(height: 8),
-            ],
-            if (progress != null && !_isComplete) ...[
-              LinearProgressIndicator(value: progress.clamp(0, 1)),
-              const SizedBox(height: 8),
-              Text('Overall: $_completed / $_total'),
-            ],
-            if (_fileProgress != null && !_isComplete) ...[
-              LinearProgressIndicator(value: _fileProgress!.clamp(0, 1)),
-              const SizedBox(height: 8),
-              Text('Current file: ${(_fileProgress! * 100).toStringAsFixed(0)}%'),
-            ],
-            const SizedBox(height: 16),
-            Text(
-              _status,
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            if (_isComplete)
-              FilledButton.icon(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.check),
-                label: const Text('OK'),
-              ),
-          ],
+          ),
         ),
       ),
     );

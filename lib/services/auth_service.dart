@@ -39,8 +39,9 @@ class AuthService {
 
       final webClientId = await _settings.googleWebClientId;
       final androidClientId = await _settings.googleAndroidClientId;
-      debugPrint('Google Sign-In: Starting with webClientId: ${webClientId ?? "null"}, androidClientId: ${androidClientId ?? "null"}');
-      
+      debugPrint(
+          'Google Sign-In: Starting with webClientId: ${webClientId ?? "null"}, androidClientId: ${androidClientId ?? "null"}');
+
       final googleSignIn = GoogleSignIn(
         scopes: const ['email', 'profile'],
         serverClientId: androidClientId ?? webClientId,
@@ -51,14 +52,16 @@ class AuthService {
         debugPrint('Auth Error: Google sign-in was cancelled by user');
         throw StateError('Google sign-in was cancelled.');
       }
-      
+
       debugPrint('Google Sign-In: Got account: ${account.email}');
       final auth = await account.authentication;
-      debugPrint('Google Sign-In: Got auth tokens, idToken: ${auth.idToken != null ? "present" : "null"}');
+      debugPrint(
+          'Google Sign-In: Got auth tokens, idToken: ${auth.idToken != null ? "present" : "null"}');
 
       final dio = Dio(BaseOptions(baseUrl: baseUrl));
-      debugPrint('API Login: Calling $baseUrl/api/auth/login for ${account.email}');
-      
+      debugPrint(
+          'API Login: Calling $baseUrl/api/auth/login for ${account.email}');
+
       final response = await dio.post<Map<String, dynamic>>(
         '/api/auth/login',
         data: {
@@ -71,11 +74,12 @@ class AuthService {
       debugPrint('API Login: Response status: ${response.statusCode}');
       final data = response.data ?? {};
       debugPrint('API Login: Response data: $data');
-      
+
       final accessToken = data['accessToken'] as String?;
       final refreshToken = data['refreshToken'] as String?;
       if (accessToken == null || refreshToken == null) {
-        debugPrint('Auth Error: Login response missing tokens. accessToken: $accessToken, refreshToken: $refreshToken');
+        debugPrint(
+            'Auth Error: Login response missing tokens. accessToken: $accessToken, refreshToken: $refreshToken');
         throw StateError('Login response did not include tokens.');
       }
 
@@ -96,7 +100,8 @@ class AuthService {
       final baseUrl = await _settings.apiBaseUrl;
       final currentRefreshToken = await refreshToken;
       if (baseUrl == null || currentRefreshToken == null) {
-        debugPrint('Auth Error: Cannot refresh - baseUrl: $baseUrl, refreshToken: ${currentRefreshToken != null ? "present" : "null"}');
+        debugPrint(
+            'Auth Error: Cannot refresh - baseUrl: $baseUrl, refreshToken: ${currentRefreshToken != null ? "present" : "null"}');
         throw StateError('No refresh token is available.');
       }
 
@@ -106,7 +111,7 @@ class AuthService {
         '/api/auth/refresh',
         data: {'refreshToken': currentRefreshToken},
       );
-      
+
       debugPrint('Auth Refresh: Response status: ${response.statusCode}');
       final data = response.data ?? {};
       final newAccessToken = data['accessToken'] as String?;
@@ -115,7 +120,7 @@ class AuthService {
         debugPrint('Auth Error: Refresh response missing tokens');
         throw StateError('Refresh response did not include tokens.');
       }
-      
+
       await _storage.write(key: _accessTokenKey, value: newAccessToken);
       await _storage.write(key: _refreshTokenKey, value: newRefreshToken);
       debugPrint('Auth Refresh: Success');
