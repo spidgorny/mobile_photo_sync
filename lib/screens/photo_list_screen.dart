@@ -1,7 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/photo_upload.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/background_sync_service.dart';
@@ -11,7 +15,6 @@ import '../services/sync_service.dart';
 import '../services/sync_settings_service.dart';
 import '../services/upload_history_service.dart';
 import 'folder_screen.dart';
-import 'preview_screen.dart';
 
 class PhotoListScreen extends StatefulWidget {
   const PhotoListScreen({super.key, required this.folder});
@@ -33,12 +36,14 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
 
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 7));
   DateTime _endDate = DateTime.now();
-  String _status = 'Ready';
+  String _status = '';
   bool _busy = false;
   int _completed = 0;
   int _total = 0;
   double? _fileProgress;
   bool _autoSyncEnabled = false;
+  List<PhotoUpload> _photos = [];
+  Set<String> _uploadedKeys = {};
 
   static const _startDateKey = 'start_date';
   static const _endDateKey = 'end_date';
@@ -55,6 +60,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     _syncSettings = SyncSettingsService();
     _loadDateRange();
     _loadSyncSettings();
+    _loadPhotos();
   }
 
   Future<void> _loadDateRange() async {
@@ -73,6 +79,32 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_startDateKey, _startDate.millisecondsSinceEpoch);
     await prefs.setInt(_endDateKey, _endDate.millisecondsSinceEpoch);
+  }
+
+  Future<void> _loadPhotos() async {
+    setState(() => _busy = true);
+    try {
+      final photos = await _sync.preview(_startDate, _endDate);
+      
+      final uploadedKeys = <String>{};
+      for (final photo in photos) {
+        final key = photo.uploadKey(widget.folder);
+        if (await _history.isUploaded(key)) {
+          uploadedKeys.add(key);
+        }
+      }
+
+      final newCount = photos.length - uploadedKeys.length;
+      setState(() {
+        _photos = photos;
+        _uploadedKeys = uploadedKeys;
+        _status = 'Found ${photos.length} photos ($newCount new)';
+      });
+    } catch (e) {
+      setState(() => _status = 'Error: $e');
+    } finally {
+      setState(() => _busy = false);
+    }
   }
 
   Future<void> _loadSyncSettings() async {
@@ -157,6 +189,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
       setState(() => _startDate = picked);
       await _saveDateRange();
       await _saveSyncSettings();
+      await _loadPhotos();
     }
   }
 
@@ -171,21 +204,8 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
       setState(() => _endDate = picked);
       await _saveDateRange();
       await _saveSyncSettings();
+      await _loadPhotos();
     }
-  }
-
-  Future<void> _preview() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PreviewScreen(
-          folder: widget.folder,
-          start: _startDate,
-          end: _endDate,
-          sync: _sync,
-        ),
-      ),
-    );
   }
 
   Future<void> _upload() async {
@@ -258,9 +278,8 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: OutlinedButton.icon(onPressed: _busy ? null : _preview, icon: const Icon(Icons.search), label: const Text('Preview'))),
-              const SizedBox(width: 8),
               Expanded(child: FilledButton.icon(onPressed: _busy ? null : _upload, icon: const Icon(Icons.cloud_upload), label: const Text('Upload'))),
+              IconButton(onPressed: _busy ? null : _loadPhotos, icon: const Icon(Icons.refresh)),
             ],
           ),
           const SizedBox(height: 24),
@@ -277,6 +296,61 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
           ],
           const SizedBox(height: 16),
           Text(_status),
+          const SizedBox(height: 16),
+          if (_photos.isNotEmpty)
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 5,
+                crossAxisSpacing: 4,
+                mainAxisSpacing: 4,
+              ),
+              itemCount: _photos.length,
+              itemBuilder: (context, index) {
+                final photo = _photos[index];
+                final isUploaded = _uploadedKeys.contains(photo.uploadKey(widget.folder));
+                return FutureBuilder<Uint8List?>(
+                  future: photo.assetId.isNotEmpty
+                      ? AssetEntity.fromId(photo.assetId).then((asset) => asset?.thumbnailData)
+                      : null,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.memory(
+                            snapshot.data!,
+                            fit: BoxFit.cover,
+                          ),
+                          if (isUploaded)
+                            const Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Icon(
+                                Icons.cloud_done,
+                                color: Colors.white,
+                                size: 20,
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 2,
+                                    color: Colors.black,
+                                    offset: Offset(0, 0),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      );
+                    }
+                    return const Icon(Icons.image);
+                  },
+                );
+              },
+            ),
           const SizedBox(height: 24),
           TextButton.icon(
             onPressed: _busy ? null : () async => _runBusy(() => _history.clear().then((_) => setState(() => _status = 'Local upload history cleared.'))),
