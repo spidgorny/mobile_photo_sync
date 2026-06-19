@@ -238,6 +238,23 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
             icon: const Icon(Icons.folder_open),
             tooltip: 'Change folder',
           ),
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'clear_history') {
+                await _runBusy(() => _history.clear().then((_) => setState(() => _status = 'Local upload history cleared.')));
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'clear_history',
+                child: ListTile(
+                  leading: Icon(Icons.delete_sweep),
+                  title: Text('Clear local upload history'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -331,11 +348,6 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
               },
             ),
           const SizedBox(height: 24),
-          TextButton.icon(
-            onPressed: _busy ? null : () async => _runBusy(() => _history.clear().then((_) => setState(() => _status = 'Local upload history cleared.'))),
-            icon: const Icon(Icons.delete_sweep),
-            label: const Text('Clear local upload history'),
-          ),
         ],
       ),
       ),
