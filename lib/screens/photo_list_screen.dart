@@ -257,7 +257,9 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
         icon: const Icon(Icons.cloud_upload),
         label: const Text('Upload'),
       ),
-      body: ListView(
+      body: RefreshIndicator(
+        onRefresh: _loadPhotos,
+        child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text('Date range', style: Theme.of(context).textTheme.titleMedium),
@@ -280,8 +282,6 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
             value: _autoSyncEnabled,
             onChanged: _busy ? null : _toggleAutoSync,
           ),
-          const SizedBox(height: 16),
-          IconButton(onPressed: _busy ? null : _loadPhotos, icon: const Icon(Icons.refresh)),
           const SizedBox(height: 24),
           if (_busy) const LinearProgressIndicator(),
           if (progress != null) ...[
@@ -358,6 +358,8 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
             label: const Text('Clear local upload history'),
           ),
         ],
+      ),
+        ),
       ),
     );
   }
