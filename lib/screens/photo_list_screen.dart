@@ -3,9 +3,11 @@ import 'package:intl/intl.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/background_sync_service.dart';
 import '../services/photo_scanner_service.dart';
 import '../services/settings_service.dart';
 import '../services/sync_service.dart';
+import '../services/sync_settings_service.dart';
 import '../services/upload_history_service.dart';
 import 'folder_screen.dart';
 import 'preview_screen.dart';
@@ -25,6 +27,8 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
   late final ApiService _api;
   late final SyncService _sync;
   late final UploadHistoryService _history;
+  late final BackgroundSyncService _backgroundSync;
+  late final SyncSettingsService _syncSettings;
 
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 7));
   DateTime _endDate = DateTime.now();
@@ -33,6 +37,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
   int _completed = 0;
   int _total = 0;
   double? _fileProgress;
+  bool _autoSyncEnabled = false;
 
   @override
   void initState() {
@@ -42,6 +47,66 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     _api = ApiService(_settings, _auth);
     _history = UploadHistoryService();
     _sync = SyncService(_api, PhotoScannerService(), _history);
+    _backgroundSync = BackgroundSyncService(_settings, _auth, _api, PhotoScannerService(), _history);
+    _syncSettings = SyncSettingsService();
+    _loadSyncSettings();
+  }
+
+  Future<void> _loadSyncSettings() async {
+    try {
+      final settings = await _syncSettings.getSettings();
+      setState(() {
+        _autoSyncEnabled = settings.enabled;
+        if (settings.startDate != _startDate) _startDate = settings.startDate;
+        if (settings.endDate != _endDate) _endDate = settings.endDate;
+      });
+    } catch (e) {
+      debugPrint('Failed to load sync settings: $e');
+    }
+  }
+
+  Future<void> _saveSyncSettings() async {
+    try {
+      final settings = SyncSettings(
+        enabled: _autoSyncEnabled,
+        folder: widget.folder,
+        startDate: _startDate,
+        endDate: _endDate,
+      );
+      await _syncSettings.saveSettings(settings);
+    } catch (e) {
+      debugPrint('Failed to save sync settings: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save sync settings: $e')),
+      );
+    }
+  }
+
+  Future<void> _toggleAutoSync(bool enabled) async {
+    try {
+      if (enabled) {
+        // Request notification permission
+        await _backgroundSync.initialize();
+        await _backgroundSync.schedulePeriodicSync();
+        setState(() => _autoSyncEnabled = true);
+        await _saveSyncSettings();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Auto-sync enabled. Photos will sync hourly.')),
+        );
+      } else {
+        await _backgroundSync.disableBackgroundSync();
+        setState(() => _autoSyncEnabled = false);
+        await _saveSyncSettings();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Auto-sync disabled.')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to toggle auto-sync: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to toggle auto-sync: $e')),
+      );
+    }
   }
 
   Future<void> _runBusy(Future<void> Function() action) async {
@@ -65,7 +130,10 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 1)),
     );
-    if (picked != null) setState(() => _startDate = picked);
+    if (picked != null) {
+      setState(() => _startDate = picked);
+      await _saveSyncSettings();
+    }
   }
 
   Future<void> _pickEndDate() async {
@@ -75,7 +143,10 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 1)),
     );
-    if (picked != null) setState(() => _endDate = picked);
+    if (picked != null) {
+      setState(() => _endDate = picked);
+      await _saveSyncSettings();
+    }
   }
 
   Future<void> _preview() async {
@@ -153,6 +224,13 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
             ],
           ),
           const SizedBox(height: 24),
+          SwitchListTile(
+            title: const Text('Auto-sync'),
+            subtitle: const Text('Sync photos hourly in background'),
+            value: _autoSyncEnabled,
+            onChanged: _busy ? null : _toggleAutoSync,
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(child: OutlinedButton.icon(onPressed: _busy ? null : _preview, icon: const Icon(Icons.search), label: const Text('Preview'))),

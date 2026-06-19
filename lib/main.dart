@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:workmanager/workmanager.dart';
 
 import 'screens/login_screen.dart';
+import 'services/background_sync_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  Workmanager().initialize(callbackDispatcher);
   runApp(const PhotoSyncApp());
 }
 
