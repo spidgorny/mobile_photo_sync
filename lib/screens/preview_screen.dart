@@ -5,6 +5,7 @@ import 'package:photo_manager/photo_manager.dart';
 
 import '../models/photo_upload.dart';
 import '../services/sync_service.dart';
+import '../services/upload_history_service.dart';
 
 class PreviewScreen extends StatefulWidget {
   const PreviewScreen({
@@ -26,6 +27,7 @@ class PreviewScreen extends StatefulWidget {
 
 class _PreviewScreenState extends State<PreviewScreen> {
   List<PhotoUpload> _photos = [];
+  Set<String> _uploadedKeys = {};
   bool _busy = false;
   String _status = 'Loading...';
   int _completed = 0;
@@ -42,9 +44,21 @@ class _PreviewScreenState extends State<PreviewScreen> {
     setState(() => _busy = true);
     try {
       final photos = await widget.sync.preview(widget.start, widget.end);
+      final history = UploadHistoryService();
+      
+      final uploadedKeys = <String>{};
+      for (final photo in photos) {
+        final key = photo.uploadKey(widget.folder);
+        if (await history.isUploaded(key)) {
+          uploadedKeys.add(key);
+        }
+      }
+
+      final newCount = photos.length - uploadedKeys.length;
       setState(() {
         _photos = photos;
-        _status = 'Found ${photos.length} photos';
+        _uploadedKeys = uploadedKeys;
+        _status = 'Found ${photos.length} photos ($newCount new)';
       });
     } catch (e) {
       setState(() => _status = 'Error: $e');
@@ -117,6 +131,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     itemCount: _photos.length,
                     itemBuilder: (context, index) {
                       final photo = _photos[index];
+                      final isUploaded = _uploadedKeys.contains(photo.uploadKey(widget.folder));
                       return FutureBuilder<Uint8List?>(
                         future: photo.assetId.isNotEmpty
                             ? AssetEntity.fromId(photo.assetId).then((asset) => asset?.thumbnailData)
@@ -126,9 +141,31 @@ class _PreviewScreenState extends State<PreviewScreen> {
                             return const Center(child: CircularProgressIndicator());
                           }
                           if (snapshot.hasData && snapshot.data != null) {
-                            return Image.memory(
-                              snapshot.data!,
-                              fit: BoxFit.cover,
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.memory(
+                                  snapshot.data!,
+                                  fit: BoxFit.cover,
+                                ),
+                                if (isUploaded)
+                                  const Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: Icon(
+                                      Icons.cloud_done,
+                                      color: Colors.white,
+                                      size: 20,
+                                      shadows: [
+                                        Shadow(
+                                          blurRadius: 2,
+                                          color: Colors.black,
+                                          offset: Offset(0, 0),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             );
                           }
                           return const Icon(Icons.image);
