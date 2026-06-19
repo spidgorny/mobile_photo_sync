@@ -38,11 +38,12 @@ class AuthService {
       }
 
       final webClientId = await _settings.googleWebClientId;
-      debugPrint('Google Sign-In: Starting with webClientId: ${webClientId ?? "null"}');
+      final androidClientId = await _settings.googleAndroidClientId;
+      debugPrint('Google Sign-In: Starting with webClientId: ${webClientId ?? "null"}, androidClientId: ${androidClientId ?? "null"}');
       
       final googleSignIn = GoogleSignIn(
         scopes: const ['email', 'profile'],
-        serverClientId: webClientId,
+        serverClientId: androidClientId ?? webClientId,
       );
 
       final account = await googleSignIn.signIn();

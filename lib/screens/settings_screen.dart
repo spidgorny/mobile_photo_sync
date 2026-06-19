@@ -12,7 +12,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _apiController = TextEditingController();
-  final _clientIdController = TextEditingController();
+  final _webClientIdController = TextEditingController();
+  final _androidClientIdController = TextEditingController();
   bool _loading = true;
 
   @override
@@ -23,13 +24,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _load() async {
     _apiController.text = await widget.settings.apiBaseUrl ?? '';
-    _clientIdController.text = await widget.settings.googleWebClientId ?? '';
+    _webClientIdController.text = await widget.settings.googleWebClientId ?? '';
+    _androidClientIdController.text = await widget.settings.googleAndroidClientId ?? '';
     setState(() => _loading = false);
   }
 
   Future<void> _save() async {
     await widget.settings.setApiBaseUrl(_apiController.text);
-    await widget.settings.setGoogleWebClientId(_clientIdController.text);
+    await widget.settings.setGoogleWebClientId(_webClientIdController.text);
+    await widget.settings.setGoogleAndroidClientId(_androidClientIdController.text);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings saved')));
       Navigator.pop(context);
@@ -56,10 +59,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  controller: _clientIdController,
+                  controller: _webClientIdController,
                   decoration: const InputDecoration(
                     labelText: 'Google Web Client ID (optional)',
                     helperText: 'Needed if the backend later verifies Google idToken.',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _androidClientIdController,
+                  decoration: const InputDecoration(
+                    labelText: 'Google Android Client ID (required for physical devices)',
+                    helperText: 'Required for Google Sign-In on Android devices. Add both debug and release SHA-1 fingerprints to this client ID in Google Cloud Console.',
                     border: OutlineInputBorder(),
                   ),
                 ),

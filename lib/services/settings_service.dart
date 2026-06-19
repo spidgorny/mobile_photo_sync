@@ -4,9 +4,11 @@ class SettingsService {
   static const _storage = FlutterSecureStorage();
   static const _apiBaseUrlKey = 'api_base_url';
   static const _googleWebClientIdKey = 'google_web_client_id';
+  static const _googleAndroidClientIdKey = 'google_android_client_id';
 
   static const defaultApiBaseUrl = String.fromEnvironment('API_BASE_URL');
   static const defaultGoogleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+  static const defaultGoogleAndroidClientId = String.fromEnvironment('GOOGLE_CLIENT_ID_ANDROID');
 
   Future<String?> get apiBaseUrl async {
     final stored = await _storage.read(key: _apiBaseUrlKey);
@@ -28,5 +30,16 @@ class SettingsService {
 
   Future<void> setGoogleWebClientId(String value) async {
     await _storage.write(key: _googleWebClientIdKey, value: value.trim());
+  }
+
+  Future<String?> get googleAndroidClientId async {
+    final stored = await _storage.read(key: _googleAndroidClientIdKey);
+    if (stored != null && stored.trim().isNotEmpty) return stored.trim();
+    if (defaultGoogleAndroidClientId.trim().isNotEmpty) return defaultGoogleAndroidClientId.trim();
+    return null;
+  }
+
+  Future<void> setGoogleAndroidClientId(String value) async {
+    await _storage.write(key: _googleAndroidClientIdKey, value: value.trim());
   }
 }
