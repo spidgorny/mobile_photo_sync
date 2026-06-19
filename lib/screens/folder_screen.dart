@@ -23,7 +23,7 @@ class _FolderScreenState extends State<FolderScreen> {
   List<String> _folders = [];
   String? _selectedFolder;
   bool _busy = false;
-  String _status = 'Ready';
+  String _status = '';
   bool _showNewFolderForm = false;
 
   final _newFolderController = TextEditingController();
