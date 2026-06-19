@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:photo_manager/photo_manager.dart';
 
+import '../models/photo_upload.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/photo_scanner_service.dart';
@@ -34,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _total = 0;
   double? _fileProgress;
   bool _showNewFolderForm = false;
+  List<PhotoUpload> _previewPhotos = [];
 
   final _newFolderController = TextEditingController();
   final _newFolderFocusNode = FocusNode();
@@ -144,7 +149,10 @@ class _HomeScreenState extends State<HomeScreen> {
     await _runBusy(() async {
       setState(() => _status = 'Scanning DCIM/Camera...');
       final photos = await _sync.preview(_startDate, _endDate);
-      setState(() => _status = 'Found ${photos.length} camera photos in date range.');
+      setState(() {
+        _previewPhotos = photos;
+        _status = 'Found ${photos.length} camera photos in date range.';
+      });
     });
   }
 
@@ -289,6 +297,38 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
           const SizedBox(height: 16),
           Text(_status),
+          const SizedBox(height: 16),
+          if (_previewPhotos.isNotEmpty)
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 5,
+                crossAxisSpacing: 4,
+                mainAxisSpacing: 4,
+              ),
+              itemCount: _previewPhotos.length,
+              itemBuilder: (context, index) {
+                final photo = _previewPhotos[index];
+                return FutureBuilder<Uint8List?>(
+                  future: photo.assetId.isNotEmpty
+                      ? AssetEntity.fromId(photo.assetId).then((asset) => asset?.thumbnailData)
+                      : null,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return Image.memory(
+                        snapshot.data!,
+                        fit: BoxFit.cover,
+                      );
+                    }
+                    return const Icon(Icons.image);
+                  },
+                );
+              },
+            ),
           const SizedBox(height: 24),
           TextButton.icon(
             onPressed: _busy ? null : () async => _runBusy(() => _history.clear().then((_) => setState(() => _status = 'Local upload history cleared.'))),
