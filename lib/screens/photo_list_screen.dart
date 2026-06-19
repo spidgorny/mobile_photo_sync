@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -39,6 +40,9 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
   double? _fileProgress;
   bool _autoSyncEnabled = false;
 
+  static const _startDateKey = 'start_date';
+  static const _endDateKey = 'end_date';
+
   @override
   void initState() {
     super.initState();
@@ -49,7 +53,26 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     _sync = SyncService(_api, PhotoScannerService(), _history);
     _backgroundSync = BackgroundSyncService(_settings, _auth, _api, PhotoScannerService(), _history);
     _syncSettings = SyncSettingsService();
+    _loadDateRange();
     _loadSyncSettings();
+  }
+
+  Future<void> _loadDateRange() async {
+    final prefs = await SharedPreferences.getInstance();
+    final startDateMs = prefs.getInt(_startDateKey);
+    final endDateMs = prefs.getInt(_endDateKey);
+    if (startDateMs != null && endDateMs != null) {
+      setState(() {
+        _startDate = DateTime.fromMillisecondsSinceEpoch(startDateMs);
+        _endDate = DateTime.fromMillisecondsSinceEpoch(endDateMs);
+      });
+    }
+  }
+
+  Future<void> _saveDateRange() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_startDateKey, _startDate.millisecondsSinceEpoch);
+    await prefs.setInt(_endDateKey, _endDate.millisecondsSinceEpoch);
   }
 
   Future<void> _loadSyncSettings() async {
@@ -132,6 +155,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     );
     if (picked != null) {
       setState(() => _startDate = picked);
+      await _saveDateRange();
       await _saveSyncSettings();
     }
   }
@@ -145,6 +169,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     );
     if (picked != null) {
       setState(() => _endDate = picked);
+      await _saveDateRange();
       await _saveSyncSettings();
     }
   }

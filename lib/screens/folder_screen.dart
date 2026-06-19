@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -28,6 +29,8 @@ class _FolderScreenState extends State<FolderScreen> {
   final _newFolderController = TextEditingController();
   final _newFolderFocusNode = FocusNode();
 
+  static const _selectedFolderKey = 'selected_folder';
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +38,20 @@ class _FolderScreenState extends State<FolderScreen> {
     _auth = AuthService(_settings);
     _api = ApiService(_settings, _auth);
     _loadFolders();
+    _loadSelectedFolder();
+  }
+
+  Future<void> _loadSelectedFolder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final selectedFolder = prefs.getString(_selectedFolderKey);
+    if (selectedFolder != null) {
+      setState(() => _selectedFolder = selectedFolder);
+    }
+  }
+
+  Future<void> _saveSelectedFolder(String folder) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_selectedFolderKey, folder);
   }
 
   Future<void> _runBusy(Future<void> Function() action) async {
@@ -73,6 +90,7 @@ class _FolderScreenState extends State<FolderScreen> {
         _status = 'Created folder $name';
         _showNewFolderForm = false;
       });
+      await _saveSelectedFolder(name);
     });
   }
 
@@ -80,10 +98,10 @@ class _FolderScreenState extends State<FolderScreen> {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen(settings: _settings)));
   }
 
-  void _navigateToPhotoList() {
-    if (_selectedFolder != null && _selectedFolder!.isNotEmpty) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => PhotoListScreen(folder: _selectedFolder!)));
-    }
+  void _navigateToPhotoList(String folder) {
+    setState(() => _selectedFolder = folder);
+    _saveSelectedFolder(folder);
+    Navigator.push(context, MaterialPageRoute(builder: (_) => PhotoListScreen(folder: folder)));
   }
 
   void _logout() async {
@@ -103,65 +121,81 @@ class _FolderScreenState extends State<FolderScreen> {
           IconButton(onPressed: _busy ? null : _logout, icon: const Icon(Icons.logout)),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Column(
         children: [
-          Text('Upload folder', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedFolder,
-                  decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Existing folder'),
-                  items: _folders.map((folder) => DropdownMenuItem(value: folder, child: Text(folder))).toList(),
-                  onChanged: _busy ? null : (value) => setState(() => _selectedFolder = value),
-                ),
-              ),
-              IconButton(onPressed: _busy ? null : _loadFolders, icon: const Icon(Icons.refresh)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (!_showNewFolderForm)
-            FilledButton.icon(
-              onPressed: _busy ? null : () {
-                setState(() => _showNewFolderForm = true);
-                Future.delayed(const Duration(milliseconds: 100), () => _newFolderFocusNode.requestFocus());
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Create Folder'),
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _newFolderController,
-                    focusNode: _newFolderFocusNode,
-                    decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'New folder name'),
+          if (_showNewFolderForm)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _newFolderController,
+                      focusNode: _newFolderFocusNode,
+                      decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'New folder name'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(onPressed: _busy ? null : _createFolder, child: const Text('Create')),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: _busy ? null : () => setState(() => _showNewFolderForm = false),
-                  child: const Text('Cancel'),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  FilledButton(onPressed: _busy ? null : _createFolder, child: const Text('Create')),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    onPressed: _busy ? null : () => setState(() => _showNewFolderForm = false),
+                    child: const Text('Cancel'),
+                  ),
+                ],
+              ),
             ),
-          const SizedBox(height: 24),
+          Expanded(
+            child: _folders.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.folder_open, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No folders found',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('Create a folder to get started'),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: _folders.length,
+                    itemBuilder: (context, index) {
+                      final folder = _folders[index];
+                      final isSelected = folder == _selectedFolder;
+                      return Card(
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.folder,
+                            color: isSelected ? Colors.blue : Colors.grey,
+                          ),
+                          title: Text(folder),
+                          trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : null,
+                          onTap: _busy ? null : () => _navigateToPhotoList(folder),
+                        ),
+                      );
+                    },
+                  ),
+          ),
           if (_busy) const LinearProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(_status),
-          const SizedBox(height: 24),
-          if (_selectedFolder != null && _selectedFolder!.isNotEmpty)
-            FilledButton.icon(
-              onPressed: _busy ? null : _navigateToPhotoList,
-              icon: const Icon(Icons.arrow_forward),
-              label: const Text('Continue to Photos'),
-            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(_status),
+          ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _busy ? null : () {
+          setState(() => _showNewFolderForm = true);
+          Future.delayed(const Duration(milliseconds: 100), () => _newFolderFocusNode.requestFocus());
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Create Folder'),
       ),
     );
   }
