@@ -15,6 +15,7 @@ import '../services/sync_service.dart';
 import '../services/sync_settings_service.dart';
 import '../services/upload_history_service.dart';
 import 'folder_screen.dart';
+import 'upload_screen.dart';
 
 class PhotoListScreen extends StatefulWidget {
   const PhotoListScreen({super.key, required this.folder});
@@ -38,9 +39,6 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
   DateTime _endDate = DateTime.now();
   String _status = '';
   bool _busy = false;
-  int _completed = 0;
-  int _total = 0;
-  double? _fileProgress;
   bool _autoSyncEnabled = false;
   List<PhotoUpload> _photos = [];
   Set<String> _uploadedKeys = {};
@@ -209,26 +207,18 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
   }
 
   Future<void> _upload() async {
-    await _runBusy(() async {
-      final summary = await _sync.uploadRange(
-        folder: widget.folder,
-        start: _startDate,
-        end: _endDate,
-        onProgress: (progress) {
-          if (!mounted) return;
-          setState(() {
-            _status = progress.message;
-            _completed = progress.completed;
-            _total = progress.total;
-            _fileProgress = progress.currentFileProgress;
-          });
-        },
-      );
-      setState(() {
-        _status = 'Done. Scanned ${summary.scanned}, uploaded ${summary.uploaded}, skipped ${summary.skipped}.';
-        _fileProgress = null;
-      });
-    });
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UploadScreen(
+          folder: widget.folder,
+          start: _startDate,
+          end: _endDate,
+          sync: _sync,
+        ),
+      ),
+    );
+    await _loadPhotos();
   }
 
   String _date(DateTime date) => DateFormat.yMMMd().format(date);
@@ -239,8 +229,6 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final progress = _total == 0 ? null : _completed / _total;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.folder),
@@ -285,16 +273,6 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
           ),
           const SizedBox(height: 8),
           if (_busy) const LinearProgressIndicator(),
-          if (progress != null) ...[
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: progress.clamp(0, 1)),
-            Text('Overall: $_completed / $_total'),
-          ],
-          if (_fileProgress != null) ...[
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: _fileProgress!.clamp(0, 1)),
-            Text('Current file: ${(_fileProgress! * 100).toStringAsFixed(0)}%'),
-          ],
           const SizedBox(height: 16),
           Text(_status),
           const SizedBox(height: 16),
