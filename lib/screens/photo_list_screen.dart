@@ -227,6 +227,20 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const FolderScreen()));
   }
 
+  Future<void> _testBackgroundSync() async {
+    try {
+      await _backgroundSync.initialize();
+      await _backgroundSync.performSync();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Background sync test completed. Check notification for details.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Background sync test failed: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -242,9 +256,19 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
             onSelected: (value) async {
               if (value == 'clear_history') {
                 await _runBusy(() => _history.clear().then((_) => setState(() => _status = 'Local upload history cleared.')));
+              } else if (value == 'test_sync') {
+                await _testBackgroundSync();
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'test_sync',
+                child: ListTile(
+                  leading: Icon(Icons.sync),
+                  title: Text('Test background sync now'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
               const PopupMenuItem(
                 value: 'clear_history',
                 child: ListTile(
