@@ -15,6 +15,7 @@ import '../services/sync_service.dart';
 import '../services/sync_settings_service.dart';
 import '../services/upload_history_service.dart';
 import 'folder_screen.dart';
+import 'photo_viewer_screen.dart';
 import 'upload_screen.dart';
 
 class PhotoListScreen extends StatefulWidget {
@@ -234,7 +235,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
   Future<void> _testBackgroundSync() async {
     try {
       await _backgroundSync.initialize();
-      await _backgroundSync.performSync();
+      await _backgroundSync.performSync(isTest: true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text(
@@ -354,31 +355,47 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
                         return const Center(child: CircularProgressIndicator());
                       }
                       if (snapshot.hasData && snapshot.data != null) {
-                        return Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Image.memory(
-                              snapshot.data!,
-                              fit: BoxFit.cover,
-                            ),
-                            if (isUploaded)
-                              const Positioned(
-                                top: 4,
-                                right: 4,
-                                child: Icon(
-                                  Icons.cloud_done,
-                                  color: Colors.white,
-                                  size: 20,
-                                  shadows: [
-                                    Shadow(
-                                      blurRadius: 2,
-                                      color: Colors.black,
-                                      offset: Offset(0, 0),
-                                    ),
-                                  ],
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PhotoViewerScreen(
+                                  photos: _photos,
+                                  initialIndex: index,
                                 ),
                               ),
-                          ],
+                            );
+                          },
+                          child: Hero(
+                            tag: photo.assetId,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.memory(
+                                  snapshot.data!,
+                                  fit: BoxFit.cover,
+                                ),
+                                if (isUploaded)
+                                  const Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: Icon(
+                                      Icons.cloud_done,
+                                      color: Colors.white,
+                                      size: 20,
+                                      shadows: [
+                                        Shadow(
+                                          blurRadius: 2,
+                                          color: Colors.black,
+                                          offset: Offset(0, 0),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         );
                       }
                       return const Icon(Icons.image);

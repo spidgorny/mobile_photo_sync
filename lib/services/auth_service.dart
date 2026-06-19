@@ -38,18 +38,24 @@ class AuthService {
       }
 
       final webClientId = await _settings.googleWebClientId;
-      final androidClientId = await _settings.googleAndroidClientId;
-      debugPrint(
-          'Google Sign-In: Starting with webClientId: ${webClientId ?? "null"}, androidClientId: ${androidClientId ?? "null"}');
-
+      
+      debugPrint('Google Sign-In: Starting with webClientId: ${webClientId ?? "null"}');
+      
       final googleSignIn = GoogleSignIn(
         scopes: const ['email', 'profile'],
-        serverClientId: androidClientId ?? webClientId,
+        serverClientId: webClientId,
       );
+
+      // Force sign out to clear any previous failed state or cached credentials
+      try {
+        await googleSignIn.signOut();
+      } catch (e) {
+        debugPrint('Google Sign-In: SignOut error (can ignore): $e');
+      }
 
       final account = await googleSignIn.signIn();
       if (account == null) {
-        debugPrint('Auth Error: Google sign-in was cancelled by user');
+        debugPrint('Auth Error: Google sign-in was cancelled by user (account is null)');
         throw StateError('Google sign-in was cancelled.');
       }
 

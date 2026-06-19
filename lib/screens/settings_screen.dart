@@ -28,13 +28,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // In production mode, only load stored values (force manual entry)
     if (kDebugMode) {
       _apiController.text = await widget.settings.apiBaseUrl ?? '';
-      _webClientIdController.text = await widget.settings.googleWebClientId ?? '';
+      _webClientIdController.text =
+          await widget.settings.googleWebClientId ?? '';
       _androidClientIdController.text =
           await widget.settings.googleAndroidClientId ?? '';
     } else {
       // In production, only load stored values (no defaults from env)
       _apiController.text = await widget.settings.apiBaseUrlStored ?? '';
-      _webClientIdController.text = await widget.settings.googleWebClientIdStored ?? '';
+      _webClientIdController.text =
+          await widget.settings.googleWebClientIdStored ?? '';
       _androidClientIdController.text =
           await widget.settings.googleAndroidClientIdStored ?? '';
     }

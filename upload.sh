@@ -23,7 +23,7 @@ NC='\033[0;0m' # No Color
 echo -e "${BLUE}[1/3] Initiating Flutter Production Build...${NC}"
 
 # Compile the release APK configuration
-flutter build apk --release
+flutter build apk --release --dart-define-from-file=.env
 
 # Double check that the artifact actually exists before network transfer
 if [ ! -f "$APK_SOURCE" ]; then

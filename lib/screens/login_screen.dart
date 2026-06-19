@@ -18,7 +18,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   AuthState _authState = const AuthState(email: null, isLoggedIn: false);
   bool _busy = false;
-  String _status = 'Ready';
 
   @override
   void initState() {
@@ -42,8 +41,8 @@ class _LoginScreenState extends State<LoginScreen> {
       await action();
     } catch (e) {
       if (mounted) {
-        setState(() => _status = 'Error: $e');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -59,7 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
         final state = await _auth.signInWithGoogle();
         setState(() {
           _authState = state;
-          _status = 'Signed in as ${state.email}';
         });
         _navigateToFolderScreen();
       });
@@ -68,58 +66,151 @@ class _LoginScreenState extends State<LoginScreen> {
         await _auth.signOut();
         setState(() {
           _authState = const AuthState(email: null, isLoggedIn: false);
-          _status = 'Signed out';
         });
       });
 
   Future<void> _openSettings() async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen(settings: _settings)));
+    await Navigator.push(context,
+        MaterialPageRoute(builder: (_) => SettingsScreen(settings: _settings)));
   }
 
   void _navigateToFolderScreen() {
     if (mounted) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const FolderScreen()));
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => const FolderScreen()));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final signedIn = _authState.isLoggedIn;
+    final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Photo Sync'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
-          IconButton(onPressed: _busy ? null : _openSettings, icon: const Icon(Icons.settings)),
-          if (signedIn) IconButton(onPressed: _busy ? null : _logout, icon: const Icon(Icons.logout)),
+          IconButton(
+            onPressed: _busy ? null : _openSettings,
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+          ),
+          if (signedIn)
+            IconButton(
+              onPressed: _busy ? null : _logout,
+              icon: const Icon(Icons.logout_rounded),
+              tooltip: 'Logout',
+            ),
         ],
       ),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.cloud_upload, size: 80, color: Colors.blue),
-              const SizedBox(height: 24),
-              const Text('Photo Sync', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text('Sync your Android photos to S3', style: TextStyle(fontSize: 16, color: Colors.grey)),
-              const SizedBox(height: 48),
-              Card(
-                child: ListTile(
-                  leading: Icon(signedIn ? Icons.verified_user : Icons.account_circle),
-                  title: Text(signedIn ? _authState.email ?? 'Signed in' : 'Not signed in'),
-                  subtitle: const Text('Authenticate to the photo-folder website'),
-                  trailing: signedIn
-                      ? null
-                      : FilledButton.icon(onPressed: _busy ? null : _login, icon: const Icon(Icons.login), label: const Text('Google')),
+              // Logo/Icon Section
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.cloud_sync_rounded,
+                  size: 100,
+                  color: theme.colorScheme.primary,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
+
+              // Title Section
+              Text(
+                'Photo Sync',
+                style: theme.textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Keep your memories safe on S3',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 64),
+
+              // Status/Action Section
+              if (signedIn) ...[
+                Text(
+                  'Signed in as',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _authState.email ?? '',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: FilledButton.icon(
+                    onPressed: _busy ? null : _navigateToFolderScreen,
+                    icon: const Icon(Icons.folder_open_rounded),
+                    label: const Text('Open My Folders',
+                        style: TextStyle(fontSize: 18)),
+                  ),
+                ),
+              ] else ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: FilledButton(
+                    onPressed: _busy ? null : _login,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.login_rounded),
+                        const SizedBox(width: 12),
+                        Text(
+                          _busy ? 'Signing in...' : 'Sign in with Google',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Required to sync with your S3 bucket',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 48),
               if (_busy) const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              Text(_status, style: const TextStyle(color: Colors.grey)),
             ],
           ),
         ),
