@@ -252,6 +252,11 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _busy ? null : _upload,
+        icon: const Icon(Icons.cloud_upload),
+        label: const Text('Upload'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -276,12 +281,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
             onChanged: _busy ? null : _toggleAutoSync,
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: FilledButton.icon(onPressed: _busy ? null : _upload, icon: const Icon(Icons.cloud_upload), label: const Text('Upload'))),
-              IconButton(onPressed: _busy ? null : _loadPhotos, icon: const Icon(Icons.refresh)),
-            ],
-          ),
+          IconButton(onPressed: _busy ? null : _loadPhotos, icon: const Icon(Icons.refresh)),
           const SizedBox(height: 24),
           if (_busy) const LinearProgressIndicator(),
           if (progress != null) ...[
