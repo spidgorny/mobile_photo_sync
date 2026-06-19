@@ -360,7 +360,6 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
           ),
         ],
       ),
-        ),
       ),
     );
   }
