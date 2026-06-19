@@ -275,14 +275,15 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
           SwitchListTile(
             title: const Text('Auto-sync'),
             subtitle: const Text('Sync photos hourly in background'),
             value: _autoSyncEnabled,
             onChanged: _busy ? null : _toggleAutoSync,
+            contentPadding: EdgeInsets.zero,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
           if (_busy) const LinearProgressIndicator(),
           if (progress != null) ...[
             const SizedBox(height: 8),
