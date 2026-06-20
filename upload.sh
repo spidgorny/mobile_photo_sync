@@ -20,6 +20,15 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0;0m' # No Color
 
+echo -e "${BLUE}[0/3] Incrementing Build Number...${NC}"
+
+# Automatically increment the build number (the part after the +) in pubspec.yaml
+# Uses perl to find the version line and increment the numeric suffix
+perl -i -pe 's/^(version:\s+\d+\.\d+\.\d+\+)(\d+)$/$1.($2+1)/e' pubspec.yaml
+
+NEW_VERSION=$(grep "version:" pubspec.yaml | sed 's/version: //')
+echo -e "${GREEN}[✔] Version bumped to: $NEW_VERSION${NC}"
+
 echo -e "${BLUE}[1/3] Initiating Flutter Production Build...${NC}"
 
 # Compile the release APK configuration
@@ -38,13 +47,13 @@ echo -e "${BLUE}[2/3] Uploading APK to phone over SSH...${NC}"
 scp -P "${PHONE_PORT}" "${APK_SOURCE}" "${PHONE_USER}@${PHONE_IP}:${REMOTE_DEST}${APK_TARGET_NAME}"
 
 echo -e "${GREEN}[✔] Upload complete! File saved to phone at: ${REMOTE_DEST}${APK_TARGET_NAME}${NC}"
-echo -e "${BLUE}[3/3] Attempting local installation loop on device...${NC}"
+#echo -e "${BLUE}[3/3] Attempting local installation loop on device...${NC}"
 
 # Optional: Run adb or package manager commands locally inside the phone's shell terminal environment 
 # Note: This step requires your phone's internal SSH environment to have local root/su privileges or native access to 'pm'.
-ssh -p "${PHONE_PORT}" "${PHONE_USER}@${PHONE_IP}" "log 'Installing new build...'; pm install -r ${REMOTE_DEST}${APK_TARGET_NAME}" || {
-    echo -e "${RED}Notice: Remote automatic installation skipped or failed. (Requires native root/package manager access on the phone's SSH environment).${NC}"
-    echo -e "${BLUE}You can manually tap and install the file located in your phone's 'Download' folder.${NC}"
-}
+#ssh -p "${PHONE_PORT}" "${PHONE_USER}@${PHONE_IP}" "log 'Installing new build...'; pm install -r ${REMOTE_DEST}${APK_TARGET_NAME}" || {
+#    echo -e "${RED}Notice: Remote automatic installation skipped or failed. (Requires native root/package manager access on the phone's SSH environment).${NC}"
+#    echo -e "${BLUE}You can manually tap and install the file located in your phone's 'Download' folder.${NC}"
+#}
 
 echo -e "${GREEN}====== DEPLOYMENT PROCESS COMPLETE ======${NC}"

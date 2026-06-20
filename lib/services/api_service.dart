@@ -40,6 +40,19 @@ class ApiService {
     return dio;
   }
 
+  Future<void> checkHealth(String url) async {
+    final dio = Dio(BaseOptions(
+      baseUrl: url,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+    ));
+    final response = await dio.get<Map<String, dynamic>>('/api/health');
+    if (response.statusCode != 200) {
+      throw StateError(
+          'API health check failed with status: ${response.statusCode}');
+    }
+  }
+
   Future<List<String>> listFolders() async {
     final dio = await _dio();
     final response = await dio.get<Map<String, dynamic>>('/api/s3/folders');
@@ -53,14 +66,16 @@ class ApiService {
     await dio.post('/api/s3/mkdir', data: {'name': name});
   }
 
-  Future<String> presign({required String key, required String contentType}) async {
+  Future<String> presign(
+      {required String key, required String contentType}) async {
     final dio = await _dio();
     final response = await dio.post<Map<String, dynamic>>(
       '/api/sync/presign',
       data: {'key': key, 'content_type': contentType},
     );
     final url = response.data?['presignedUrl'] as String?;
-    if (url == null) throw StateError('Presign response did not include presignedUrl.');
+    if (url == null)
+      throw StateError('Presign response did not include presignedUrl.');
     return url;
   }
 

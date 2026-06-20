@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../services/settings_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _webClientIdController = TextEditingController();
   final _androidClientIdController = TextEditingController();
   bool _loading = true;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -24,34 +27,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _load() async {
-    // In debug mode, prefill from environment variables
-    // In production mode, only load stored values (force manual entry)
-    if (kDebugMode) {
-      _apiController.text = await widget.settings.apiBaseUrl ?? '';
-      _webClientIdController.text =
-          await widget.settings.googleWebClientId ?? '';
-      _androidClientIdController.text =
-          await widget.settings.googleAndroidClientId ?? '';
-    } else {
-      // In production, only load stored values (no defaults from env)
-      _apiController.text = await widget.settings.apiBaseUrlStored ?? '';
-      _webClientIdController.text =
-          await widget.settings.googleWebClientIdStored ?? '';
-      _androidClientIdController.text =
-          await widget.settings.googleAndroidClientIdStored ?? '';
+    try {
+      String? api;
+      String? web;
+      String? android;
+
+      if (kDebugMode) {
+        api = await widget.settings.apiBaseUrl;
+        web = await widget.settings.googleWebClientId;
+        android = await widget.settings.googleAndroidClientId;
+      } else {
+        api = await widget.settings.apiBaseUrlStored;
+        web = await widget.settings.googleWebClientIdStored;
+        android = await widget.settings.googleAndroidClientIdStored;
+      }
+
+      if (mounted) {
+        _apiController.text = api ?? '';
+        _webClientIdController.text = web ?? '';
+        _androidClientIdController.text = android ?? '';
+      }
+    } catch (e) {
+      debugPrint('Error loading settings: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load settings: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
-    setState(() => _loading = false);
   }
 
   Future<void> _save() async {
-    await widget.settings.setApiBaseUrl(_apiController.text);
-    await widget.settings.setGoogleWebClientId(_webClientIdController.text);
-    await widget.settings
-        .setGoogleAndroidClientId(_androidClientIdController.text);
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Settings saved')));
-      Navigator.pop(context);
+    final url = _apiController.text.trim().replaceAll(RegExp(r'/+$'), '');
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter the API URL')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      // Validate the API URL before saving
+      final api = ApiService(widget.settings, AuthService(widget.settings));
+      await api.checkHealth(url);
+
+      await widget.settings.setApiBaseUrl(url);
+      await widget.settings.setGoogleWebClientId(_webClientIdController.text);
+      await widget.settings
+          .setGoogleAndroidClientId(_androidClientIdController.text);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Settings saved')));
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid API URL or server unreachable: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -95,9 +137,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 24),
                 FilledButton.icon(
-                  onPressed: _save,
-                  icon: const Icon(Icons.save),
-                  label: const Text('Save'),
+                  onPressed: _saving ? null : _save,
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save),
+                  label: Text(_saving ? 'Checking...' : 'Save'),
                 ),
               ],
             ),
