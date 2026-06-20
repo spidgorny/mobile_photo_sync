@@ -15,7 +15,11 @@ class AuthService {
   AuthService(this._settings);
 
   final SettingsService _settings;
-  static const _storage = FlutterSecureStorage();
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+  );
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
   static const _emailKey = 'email';
@@ -38,9 +42,10 @@ class AuthService {
       }
 
       final webClientId = await _settings.googleWebClientId;
-      
-      debugPrint('Google Sign-In: Starting with webClientId: ${webClientId ?? "null"}');
-      
+
+      debugPrint(
+          'Google Sign-In: Starting with webClientId: ${webClientId ?? "null"}');
+
       final googleSignIn = GoogleSignIn(
         scopes: const ['email', 'profile'],
         serverClientId: webClientId,
@@ -55,7 +60,8 @@ class AuthService {
 
       final account = await googleSignIn.signIn();
       if (account == null) {
-        debugPrint('Auth Error: Google sign-in was cancelled by user (account is null)');
+        debugPrint(
+            'Auth Error: Google sign-in was cancelled by user (account is null)');
         throw StateError('Google sign-in was cancelled.');
       }
 
@@ -79,20 +85,28 @@ class AuthService {
 
       debugPrint('API Login: Response status: ${response.statusCode}');
       final data = response.data ?? {};
-      debugPrint('API Login: Response data: $data');
+      debugPrint('API Login: Response data keys: ${data.keys.toList()}');
 
-      final accessToken = data['accessToken'] as String?;
-      final refreshToken = data['refreshToken'] as String?;
+      final accessToken =
+          data['accessToken'] as String? ?? data['access_token'] as String?;
+      final refreshToken =
+          data['refreshToken'] as String? ?? data['refresh_token'] as String?;
       if (accessToken == null || refreshToken == null) {
         debugPrint(
-            'Auth Error: Login response missing tokens. accessToken: $accessToken, refreshToken: $refreshToken');
+            'Auth Error: Login response missing tokens. data keys: ${data.keys.toList()}');
         throw StateError('Login response did not include tokens.');
       }
 
       await _storage.write(key: _accessTokenKey, value: accessToken);
       await _storage.write(key: _refreshTokenKey, value: refreshToken);
       await _storage.write(key: _emailKey, value: account.email);
-      debugPrint('Auth Success: Logged in as ${account.email}');
+
+      // Verify storage immediately
+      final savedToken = await _storage.read(key: _accessTokenKey);
+      final savedRefresh = await _storage.read(key: _refreshTokenKey);
+      debugPrint(
+          'Auth Success: Tokens saved and verified: ${savedToken != null && savedRefresh != null}');
+
       return AuthState(email: account.email, isLoggedIn: true);
     } catch (e, stackTrace) {
       debugPrint('Auth Error: $e');
@@ -120,10 +134,13 @@ class AuthService {
 
       debugPrint('Auth Refresh: Response status: ${response.statusCode}');
       final data = response.data ?? {};
-      final newAccessToken = data['accessToken'] as String?;
-      final newRefreshToken = data['refreshToken'] as String?;
+      final newAccessToken =
+          data['accessToken'] as String? ?? data['access_token'] as String?;
+      final newRefreshToken =
+          data['refreshToken'] as String? ?? data['refresh_token'] as String?;
       if (newAccessToken == null || newRefreshToken == null) {
-        debugPrint('Auth Error: Refresh response missing tokens');
+        debugPrint(
+            'Auth Error: Refresh response missing tokens. data keys: ${data.keys.toList()}');
         throw StateError('Refresh response did not include tokens.');
       }
 

@@ -55,8 +55,8 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     _api = ApiService(_settings, _auth);
     _history = UploadHistoryService();
     _sync = SyncService(_api, PhotoScannerService(), _history);
-    _backgroundSync = BackgroundSyncService(
-        _settings, _auth, _api, PhotoScannerService(), _history);
+    _backgroundSync =
+        BackgroundSyncService(_api, PhotoScannerService(), _history);
     _syncSettings = SyncSettingsService();
     _loadDateRange();
     _loadSyncSettings();
@@ -131,9 +131,11 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
       await _syncSettings.saveSettings(settings);
     } catch (e) {
       debugPrint('Failed to save sync settings: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save sync settings: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save sync settings: $e')),
+        );
+      }
     }
   }
 
@@ -145,23 +147,29 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
         await _backgroundSync.schedulePeriodicSync();
         setState(() => _autoSyncEnabled = true);
         await _saveSyncSettings();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Auto-sync enabled. Photos will sync hourly.')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Auto-sync enabled. Photos will sync hourly.')),
+          );
+        }
       } else {
         await _backgroundSync.disableBackgroundSync();
         setState(() => _autoSyncEnabled = false);
         await _saveSyncSettings();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Auto-sync disabled.')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Auto-sync disabled.')),
+          );
+        }
       }
     } catch (e) {
       debugPrint('Failed to toggle auto-sync: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to toggle auto-sync: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to toggle auto-sync: $e')),
+        );
+      }
     }
   }
 
@@ -219,6 +227,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
           start: _startDate,
           end: _endDate,
           sync: _sync,
+          photos: _photos,
         ),
       ),
     );
@@ -236,15 +245,19 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     try {
       await _backgroundSync.initialize();
       await _backgroundSync.performSync(isTest: true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Background sync test completed. Check notification for details.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Background sync test completed. Check notification for details.')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Background sync test failed: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Background sync test failed: $e')),
+        );
+      }
     }
   }
 

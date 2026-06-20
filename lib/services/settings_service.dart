@@ -31,9 +31,12 @@ class SettingsService {
 
   Future<String?> get googleWebClientId async {
     final stored = await _storage.read(key: _googleWebClientIdKey);
-    if (stored != null && stored.trim().isNotEmpty) return stored.trim();
-    if (defaultGoogleWebClientId.trim().isNotEmpty)
+    if (stored != null && stored.trim().isNotEmpty) {
+      return stored.trim();
+    }
+    if (defaultGoogleWebClientId.trim().isNotEmpty) {
       return defaultGoogleWebClientId.trim();
+    }
     return null;
   }
 
@@ -43,9 +46,12 @@ class SettingsService {
 
   Future<String?> get googleAndroidClientId async {
     final stored = await _storage.read(key: _googleAndroidClientIdKey);
-    if (stored != null && stored.trim().isNotEmpty) return stored.trim();
-    if (defaultGoogleAndroidClientId.trim().isNotEmpty)
+    if (stored != null && stored.trim().isNotEmpty) {
+      return stored.trim();
+    }
+    if (defaultGoogleAndroidClientId.trim().isNotEmpty) {
       return defaultGoogleAndroidClientId.trim();
+    }
     return null;
   }
 

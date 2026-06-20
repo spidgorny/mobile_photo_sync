@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'auth_service.dart';
 import 'settings_service.dart';
@@ -24,15 +25,22 @@ class ApiService {
     ));
     dio.interceptors.add(InterceptorsWrapper(onError: (error, handler) async {
       if (error.response?.statusCode == 401) {
-        try {
-          await _auth.refresh();
-          final retryToken = await _auth.accessToken;
-          final opts = error.requestOptions;
-          opts.headers['Authorization'] = 'Bearer $retryToken';
-          final clone = await dio.fetch(opts);
-          return handler.resolve(clone);
-        } catch (_) {
-          // fall through to original error
+        final refreshAvailable = await _auth.refreshToken != null;
+        if (refreshAvailable) {
+          try {
+            debugPrint('ApiService: 401 detected, attempting token refresh...');
+            await _auth.refresh();
+            final retryToken = await _auth.accessToken;
+            final opts = error.requestOptions;
+            opts.headers['Authorization'] = 'Bearer $retryToken';
+            final clone = await dio.fetch(opts);
+            return handler.resolve(clone);
+          } catch (e) {
+            debugPrint('ApiService: Token refresh failed: $e');
+          }
+        } else {
+          debugPrint(
+              'ApiService: 401 detected but no refresh token available.');
         }
       }
       handler.next(error);
@@ -57,7 +65,9 @@ class ApiService {
     final dio = await _dio();
     final response = await dio.get<Map<String, dynamic>>('/api/s3/folders');
     final raw = response.data?['folders'];
-    if (raw is List) return raw.map((e) => e.toString()).toList();
+    if (raw is List) {
+      return raw.map((e) => e.toString()).toList();
+    }
     return const [];
   }
 

@@ -11,11 +11,8 @@ import 'sync_settings_service.dart';
 import 'upload_history_service.dart';
 
 class BackgroundSyncService {
-  BackgroundSyncService(
-      this._settings, this._auth, this._api, this._scanner, this._history);
+  BackgroundSyncService(this._api, this._scanner, this._history);
 
-  final SettingsService _settings;
-  final AuthService _auth;
   final ApiService _api;
   final PhotoScannerService _scanner;
   final UploadHistoryService _history;

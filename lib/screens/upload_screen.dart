@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/photo_upload.dart';
 import '../services/sync_service.dart';
 
 class UploadScreen extends StatefulWidget {
@@ -9,21 +10,24 @@ class UploadScreen extends StatefulWidget {
     required this.start,
     required this.end,
     required this.sync,
+    this.photos,
   });
 
   final String folder;
   final DateTime start;
   final DateTime end;
   final SyncService sync;
+  final List<PhotoUpload>? photos;
 
   @override
   State<UploadScreen> createState() => _UploadScreenState();
 }
 
 class _UploadScreenState extends State<UploadScreen> {
-  String _status = 'Starting upload...';
+  String _status = 'Initializing...';
   int _completed = 0;
   int _total = 0;
+  List<PhotoUploadStatus> _statuses = [];
   double? _fileProgress;
   bool _isComplete = false;
   bool _hasError = false;
@@ -40,12 +44,14 @@ class _UploadScreenState extends State<UploadScreen> {
         folder: widget.folder,
         start: widget.start,
         end: widget.end,
+        photos: widget.photos,
         onProgress: (progress) {
           if (!mounted) return;
           setState(() {
             _status = progress.message;
             _completed = progress.completed;
             _total = progress.total;
+            _statuses = List.from(progress.statuses);
             _fileProgress = progress.currentFileProgress;
           });
         },
@@ -75,14 +81,15 @@ class _UploadScreenState extends State<UploadScreen> {
         automaticallyImplyLeading: !_isComplete,
       ),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: SizedBox(
-            width: double.infinity,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
                 Icon(
                   _hasError
                       ? Icons.error
@@ -101,7 +108,47 @@ class _UploadScreenState extends State<UploadScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                if (!_isComplete) ...[
+                if (_statuses.isNotEmpty) ...[
+                  LayoutBuilder(builder: (context, constraints) {
+                    final spacing = 4.0;
+                    final dotSize =
+                        (constraints.maxWidth - (spacing * 19)) / 20;
+                    return Wrap(
+                      spacing: spacing,
+                      runSpacing: spacing,
+                      children: _statuses.map((status) {
+                        Color color;
+                        switch (status) {
+                          case PhotoUploadStatus.pending:
+                            color = Colors.grey.shade300;
+                            break;
+                          case PhotoUploadStatus.uploading:
+                            color = Colors.blue;
+                            break;
+                          case PhotoUploadStatus.success:
+                            color = Colors.green;
+                            break;
+                          case PhotoUploadStatus.skipped:
+                            color = Colors.amber;
+                            break;
+                          case PhotoUploadStatus.error:
+                            color = Colors.red;
+                            break;
+                        }
+                        return Container(
+                          width: dotSize,
+                          height: dotSize,
+                          decoration: BoxDecoration(
+                            color: color,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  }),
+                  const SizedBox(height: 16),
+                ],
+                if (!_isComplete && _total == 0) ...[
                   const LinearProgressIndicator(),
                   const SizedBox(height: 8),
                 ],
@@ -140,6 +187,7 @@ class _UploadScreenState extends State<UploadScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
