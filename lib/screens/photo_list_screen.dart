@@ -231,7 +231,9 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
         ),
       ),
     );
-    await _loadPhotos();
+    if (mounted) {
+      await _loadPhotos();
+    }
   }
 
   String _date(DateTime date) => DateFormat.yMMMd().format(date);

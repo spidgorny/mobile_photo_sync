@@ -84,8 +84,9 @@ class ApiService {
       data: {'key': key, 'content_type': contentType},
     );
     final url = response.data?['presignedUrl'] as String?;
-    if (url == null)
+    if (url == null) {
       throw StateError('Presign response did not include presignedUrl.');
+    }
     return url;
   }
 

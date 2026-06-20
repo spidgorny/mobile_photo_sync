@@ -193,7 +193,7 @@ void callbackDispatcher() {
       final history = UploadHistoryService();
 
       final syncService =
-          BackgroundSyncService(settings, auth, api, scanner, history);
+          BackgroundSyncService(api, scanner, history);
       await syncService.initialize();
       await syncService.performSync();
 

@@ -90,104 +90,135 @@ class _UploadScreenState extends State<UploadScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                Icon(
-                  _hasError
-                      ? Icons.error
-                      : (_isComplete ? Icons.check_circle : Icons.cloud_upload),
-                  size: 80,
-                  color: _hasError
-                      ? Colors.red
-                      : (_isComplete ? Colors.green : Colors.blue),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  _hasError
-                      ? 'Upload Failed'
-                      : (_isComplete ? 'Upload Complete' : 'Uploading...'),
-                  style: Theme.of(context).textTheme.headlineSmall,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                if (_statuses.isNotEmpty) ...[
-                  LayoutBuilder(builder: (context, constraints) {
-                    final spacing = 4.0;
-                    final dotSize =
-                        (constraints.maxWidth - (spacing * 19)) / 20;
-                    return Wrap(
-                      spacing: spacing,
-                      runSpacing: spacing,
-                      children: _statuses.map((status) {
-                        Color color;
-                        switch (status) {
-                          case PhotoUploadStatus.pending:
-                            color = Colors.grey.shade300;
-                            break;
-                          case PhotoUploadStatus.uploading:
-                            color = Colors.blue;
-                            break;
-                          case PhotoUploadStatus.success:
-                            color = Colors.green;
-                            break;
-                          case PhotoUploadStatus.skipped:
-                            color = Colors.amber;
-                            break;
-                          case PhotoUploadStatus.error:
-                            color = Colors.red;
-                            break;
-                        }
-                        return Container(
-                          width: dotSize,
-                          height: dotSize,
-                          decoration: BoxDecoration(
-                            color: color,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        );
-                      }).toList(),
-                    );
-                  }),
-                  const SizedBox(height: 16),
-                ],
-                if (!_isComplete && _total == 0) ...[
-                  const LinearProgressIndicator(),
-                  const SizedBox(height: 8),
-                ],
-                if (progress != null && !_isComplete) ...[
-                  LinearProgressIndicator(value: progress.clamp(0, 1)),
-                  const SizedBox(height: 8),
-                  Text('Overall: $_completed / $_total',
-                      textAlign: TextAlign.center),
-                ],
-                if (_fileProgress != null && !_isComplete) ...[
-                  LinearProgressIndicator(value: _fileProgress!.clamp(0, 1)),
-                  const SizedBox(height: 8),
-                  Text(
-                      'Current file: ${(_fileProgress! * 100).toStringAsFixed(0)}%',
-                      textAlign: TextAlign.center),
-                ],
-                const SizedBox(height: 16),
-                Text(
-                  _status,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                if (_isComplete)
-                  SizedBox(
-                    width: 200,
-                    height: 54,
-                    child: FilledButton.icon(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.check, size: 28),
-                      label: const Text('OK', style: TextStyle(fontSize: 20)),
-                    ),
+                  Icon(
+                    _hasError
+                        ? Icons.error
+                        : (_isComplete
+                            ? Icons.check_circle
+                            : Icons.cloud_upload),
+                    size: 80,
+                    color: _hasError
+                        ? Colors.red
+                        : (_isComplete ? Colors.green : Colors.blue),
                   ),
-              ],
+                  const SizedBox(height: 24),
+                  Text(
+                    _hasError
+                        ? 'Upload Failed'
+                        : (_isComplete ? 'Upload Complete' : 'Uploading...'),
+                    style: Theme.of(context).textTheme.headlineSmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  if (_statuses.isNotEmpty) ...[
+                    LayoutBuilder(builder: (context, constraints) {
+                      final spacing = 4.0;
+                      final dotSize =
+                          (constraints.maxWidth - (spacing * 19)) / 20;
+                      return Wrap(
+                        spacing: spacing,
+                        runSpacing: spacing,
+                        children: _statuses.map((status) {
+                          Color color;
+                          switch (status) {
+                            case PhotoUploadStatus.pending:
+                              color = Colors.grey.shade300;
+                              break;
+                            case PhotoUploadStatus.uploading:
+                              color = Colors.blue;
+                              break;
+                            case PhotoUploadStatus.success:
+                              color = Colors.green;
+                              break;
+                            case PhotoUploadStatus.skipped:
+                              color = Colors.amber;
+                              break;
+                            case PhotoUploadStatus.error:
+                              color = Colors.red;
+                              break;
+                          }
+                          return Container(
+                            width: dotSize,
+                            height: dotSize,
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    }),
+                    const SizedBox(height: 16),
+                  ],
+                  const SizedBox(height: 16),
+                  // Progress section - kept stable to avoid layout jumps
+                  if (!_isComplete) ...[
+                    // Indeterminate loader when total is 0
+                    SizedBox(
+                      height: 4,
+                      child:
+                          _total == 0 ? const LinearProgressIndicator() : null,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Overall progress
+                    SizedBox(
+                      height: 40,
+                      child: progress != null
+                          ? Column(
+                              children: [
+                                LinearProgressIndicator(
+                                    value: progress.clamp(0, 1)),
+                                const SizedBox(height: 8),
+                                Text('Overall: $_completed / $_total',
+                                    textAlign: TextAlign.center),
+                              ],
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // File progress
+                    SizedBox(
+                      height: 40,
+                      child: _fileProgress != null
+                          ? Column(
+                              children: [
+                                LinearProgressIndicator(
+                                    value: _fileProgress!.clamp(0, 1)),
+                                const SizedBox(height: 8),
+                                Text(
+                                    'Current file: ${(_fileProgress! * 100).toStringAsFixed(0)}%',
+                                    textAlign: TextAlign.center),
+                              ],
+                            )
+                          : null,
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  // Status message
+                  Text(
+                    _status,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  if (_isComplete)
+                    SizedBox(
+                      width: 200,
+                      height: 54,
+                      child: FilledButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.check, size: 28),
+                        label: const Text('OK', style: TextStyle(fontSize: 20)),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
