@@ -41,6 +41,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
   String _status = '';
   bool _busy = false;
   bool _autoSyncEnabled = false;
+  bool _onlyWifiEnabled = true;
   List<PhotoUpload> _photos = [];
   Set<String> _uploadedKeys = {};
 
@@ -112,6 +113,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
       final settings = await _syncSettings.getSettings();
       setState(() {
         _autoSyncEnabled = settings.enabled;
+        _onlyWifiEnabled = settings.onlyWifi;
         if (settings.startDate != _startDate) _startDate = settings.startDate;
         if (settings.endDate != _endDate) _endDate = settings.endDate;
       });
@@ -124,6 +126,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
     try {
       final settings = SyncSettings(
         enabled: _autoSyncEnabled,
+        onlyWifi: _onlyWifiEnabled,
         folder: widget.folder,
         startDate: _startDate,
         endDate: _endDate,
@@ -144,7 +147,7 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
       if (enabled) {
         // Request notification permission
         await _backgroundSync.initialize();
-        await _backgroundSync.schedulePeriodicSync();
+        await _backgroundSync.schedulePeriodicSync(onlyWifi: _onlyWifiEnabled);
         setState(() => _autoSyncEnabled = true);
         await _saveSyncSettings();
         if (mounted) {
@@ -170,6 +173,15 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
           SnackBar(content: Text('Failed to toggle auto-sync: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _toggleOnlyWifi(bool enabled) async {
+    setState(() => _onlyWifiEnabled = enabled);
+    await _saveSyncSettings();
+    if (_autoSyncEnabled) {
+      // Re-schedule with new constraint
+      await _backgroundSync.schedulePeriodicSync(onlyWifi: enabled);
     }
   }
 
@@ -277,8 +289,14 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
           PopupMenuButton<String>(
             onSelected: (value) async {
               if (value == 'clear_history') {
-                await _runBusy(() => _history.clear().then((_) =>
-                    setState(() => _status = 'Local upload history cleared.')));
+                await _runBusy(() => _history.clear().then((_) {
+                      if (mounted) {
+                        setState(() {
+                          _uploadedKeys = {};
+                          _status = 'Local upload history cleared.';
+                        });
+                      }
+                    }));
               } else if (value == 'test_sync') {
                 await _testBackgroundSync();
               }
@@ -341,6 +359,17 @@ class _PhotoListScreenState extends State<PhotoListScreen> {
               onChanged: _busy ? null : _toggleAutoSync,
               contentPadding: EdgeInsets.zero,
             ),
+            if (_autoSyncEnabled)
+              Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: SwitchListTile(
+                  title: const Text('Only on Wi-Fi'),
+                  subtitle: const Text('Save cellular data'),
+                  value: _onlyWifiEnabled,
+                  onChanged: _busy ? null : _toggleOnlyWifi,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             const SizedBox(height: 8),
             if (_busy) const LinearProgressIndicator(),
             const SizedBox(height: 16),

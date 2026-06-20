@@ -35,6 +35,10 @@ class _UploadScreenState extends State<UploadScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.photos != null) {
+      _total = widget.photos!.length;
+      _statuses = List.generate(_total, (_) => PhotoUploadStatus.pending);
+    }
     _upload();
   }
 
@@ -73,7 +77,8 @@ class _UploadScreenState extends State<UploadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final progress = _total == 0 ? null : _completed / _total;
+    final progress = _total == 0 ? 0.0 : _completed / _total;
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -87,132 +92,186 @@ class _UploadScreenState extends State<UploadScreen> {
             child: SizedBox(
               width: double.infinity,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min, // Use minimum space
                 children: [
-                  Icon(
-                    _hasError
-                        ? Icons.error
-                        : (_isComplete
-                            ? Icons.check_circle
-                            : Icons.cloud_upload),
-                    size: 80,
-                    color: _hasError
-                        ? Colors.red
-                        : (_isComplete ? Colors.green : Colors.blue),
+                  // 1. Icon Slot
+                  SizedBox(
+                    height: 80,
+                    child: Icon(
+                      _hasError
+                          ? Icons.error
+                          : (_isComplete
+                              ? Icons.check_circle
+                              : Icons.cloud_upload),
+                      size: 80,
+                      color: _hasError
+                          ? Colors.red
+                          : (_isComplete ? Colors.green : Colors.blue),
+                    ),
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    _hasError
-                        ? 'Upload Failed'
-                        : (_isComplete ? 'Upload Complete' : 'Uploading...'),
-                    style: Theme.of(context).textTheme.headlineSmall,
-                    textAlign: TextAlign.center,
+
+                  // 2. Title Slot
+                  SizedBox(
+                    height: 32,
+                    child: Text(
+                      _hasError
+                          ? 'Upload Failed'
+                          : (_isComplete ? 'Upload Complete' : 'Uploading...'),
+                      style: theme.textTheme.headlineSmall,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  if (_statuses.isNotEmpty) ...[
-                    LayoutBuilder(builder: (context, constraints) {
-                      final spacing = 4.0;
-                      final dotSize =
-                          (constraints.maxWidth - (spacing * 19)) / 20;
-                      return Wrap(
-                        spacing: spacing,
-                        runSpacing: spacing,
-                        children: _statuses.map((status) {
-                          Color color;
-                          switch (status) {
-                            case PhotoUploadStatus.pending:
-                              color = Colors.grey.shade300;
-                              break;
-                            case PhotoUploadStatus.uploading:
-                              color = Colors.blue;
-                              break;
-                            case PhotoUploadStatus.success:
-                              color = Colors.green;
-                              break;
-                            case PhotoUploadStatus.skipped:
-                              color = Colors.amber;
-                              break;
-                            case PhotoUploadStatus.error:
-                              color = Colors.red;
-                              break;
-                          }
-                          return Container(
-                            width: dotSize,
-                            height: dotSize,
-                            decoration: BoxDecoration(
-                              color: color,
-                              borderRadius: BorderRadius.circular(2),
+                  const SizedBox(height: 24),
+
+                  // 3. Grid Slot (GitHub style dots)
+                  // We reserve at least 1 row of space even if empty to minimize initial jump
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 20),
+                    child: _statuses.isEmpty
+                        ? const SizedBox.shrink()
+                        : Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child:
+                                LayoutBuilder(builder: (context, constraints) {
+                              const spacing = 4.0;
+                              final dotSize =
+                                  (constraints.maxWidth - (spacing * 19)) / 20;
+                              return Wrap(
+                                spacing: spacing,
+                                runSpacing: spacing,
+                                children: _statuses.map((status) {
+                                  Color color;
+                                  switch (status) {
+                                    case PhotoUploadStatus.pending:
+                                      color = Colors.grey.shade300;
+                                    case PhotoUploadStatus.uploading:
+                                      color = Colors.blue;
+                                    case PhotoUploadStatus.success:
+                                      color = Colors.green;
+                                    case PhotoUploadStatus.skipped:
+                                      color = Colors.amber;
+                                    case PhotoUploadStatus.error:
+                                      color = Colors.red;
+                                  }
+                                  return Container(
+                                    width: dotSize,
+                                    height: dotSize,
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  );
+                                }).toList(),
+                              );
+                            }),
+                          ),
+                  ),
+
+                  // 4. Progress section - RIGID height
+                  SizedBox(
+                    height: 150, // Increased slightly to be safe
+                    child: Opacity(
+                      opacity: _isComplete ? 0.0 : 1.0,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          // Indeterminate loader (only shown when total is 0)
+                          SizedBox(
+                            height: 4,
+                            child: Visibility(
+                              visible: _total == 0,
+                              maintainSize: true,
+                              maintainAnimation: true,
+                              maintainState: true,
+                              child: const LinearProgressIndicator(),
                             ),
-                          );
-                        }).toList(),
-                      );
-                    }),
-                    const SizedBox(height: 16),
-                  ],
-                  const SizedBox(height: 16),
-                  // Progress section - kept stable to avoid layout jumps
-                  if (!_isComplete) ...[
-                    // Indeterminate loader when total is 0
-                    SizedBox(
-                      height: 4,
-                      child:
-                          _total == 0 ? const LinearProgressIndicator() : null,
-                    ),
-                    const SizedBox(height: 24),
+                          ),
+                          const SizedBox(height: 16),
 
-                    // Overall progress
-                    SizedBox(
-                      height: 40,
-                      child: progress != null
-                          ? Column(
+                          // Overall progress
+                          SizedBox(
+                            height: 50,
+                            child: Column(
                               children: [
                                 LinearProgressIndicator(
-                                    value: progress.clamp(0, 1)),
-                                const SizedBox(height: 8),
-                                Text('Overall: $_completed / $_total',
-                                    textAlign: TextAlign.center),
-                              ],
-                            )
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // File progress
-                    SizedBox(
-                      height: 40,
-                      child: _fileProgress != null
-                          ? Column(
-                              children: [
-                                LinearProgressIndicator(
-                                    value: _fileProgress!.clamp(0, 1)),
+                                  value: progress.toDouble().clamp(0, 1),
+                                ),
                                 const SizedBox(height: 8),
                                 Text(
-                                    'Current file: ${(_fileProgress! * 100).toStringAsFixed(0)}%',
-                                    textAlign: TextAlign.center),
+                                  _total > 0
+                                      ? 'Overall: $_completed / $_total'
+                                      : 'Scanning...',
+                                  textAlign: TextAlign.center,
+                                ),
                               ],
-                            )
-                          : null,
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  // Status message
-                  Text(
-                    _status,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  if (_isComplete)
-                    SizedBox(
-                      width: 200,
-                      height: 54,
-                      child: FilledButton.icon(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.check, size: 28),
-                        label: const Text('OK', style: TextStyle(fontSize: 20)),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // File progress
+                          SizedBox(
+                            height: 50,
+                            child: Column(
+                              children: [
+                                LinearProgressIndicator(
+                                  value: (_fileProgress ?? 0).clamp(0, 1),
+                                  // Keep the bar grey/visible even if progress is null
+                                  backgroundColor: _fileProgress == null
+                                      ? theme.colorScheme.surfaceContainerHighest
+                                      : null,
+                                  color: _fileProgress == null
+                                      ? Colors.transparent
+                                      : null,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _fileProgress != null
+                                      ? 'Current file: ${(_fileProgress! * 100).toStringAsFixed(0)}%'
+                                      : 'Preparing...',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                  ),
+
+                  // 5. Status message slot
+                  SizedBox(
+                    height: 64,
+                    child: Text(
+                      _status,
+                      style: theme.textTheme.bodyLarge,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // 6. OK Button slot
+                  SizedBox(
+                    height: 60, // Fixed height for the button slot
+                    child: Center(
+                      child: Visibility(
+                        visible: _isComplete,
+                        maintainSize: false, // Don't need to maintain size here, the parent SizedBox handles it
+                        child: SizedBox(
+                          width: 200,
+                          height: 54,
+                          child: FilledButton.icon(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.check, size: 28),
+                            label: const Text('OK',
+                                style: TextStyle(fontSize: 20)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

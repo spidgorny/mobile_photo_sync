@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:workmanager/workmanager.dart';
@@ -67,13 +68,13 @@ class BackgroundSyncService {
     await Workmanager().cancelAll();
   }
 
-  Future<void> schedulePeriodicSync() async {
+  Future<void> schedulePeriodicSync({required bool onlyWifi}) async {
     await Workmanager().registerPeriodicTask(
       'periodicSyncTask',
       'periodicSyncTask',
       frequency: const Duration(hours: 1),
       constraints: Constraints(
-        networkType: NetworkType.connected,
+        networkType: onlyWifi ? NetworkType.unmetered : NetworkType.connected,
         requiresBatteryNotLow: true,
         requiresCharging: false,
       ),
@@ -97,6 +98,16 @@ class BackgroundSyncService {
       if (!settings.enabled && !isTest) {
         debugPrint('Background sync: Not enabled');
         return;
+      }
+
+      // Manual check for Wi-Fi if enabled and not a manual test
+      if (settings.onlyWifi && !isTest) {
+        final connectivity = await Connectivity().checkConnectivity();
+        if (!connectivity.contains(ConnectivityResult.wifi)) {
+          debugPrint(
+              'Background sync: Only on Wi-Fi is enabled, but not on Wi-Fi. Skipping.');
+          return;
+        }
       }
 
       await _showNotification(
@@ -192,8 +203,7 @@ void callbackDispatcher() {
       final scanner = PhotoScannerService();
       final history = UploadHistoryService();
 
-      final syncService =
-          BackgroundSyncService(api, scanner, history);
+      final syncService = BackgroundSyncService(api, scanner, history);
       await syncService.initialize();
       await syncService.performSync();
 
